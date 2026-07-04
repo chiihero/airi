@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { OAuthProvider } from '../../libs/auth'
-import type { SignInProviderDefinition } from './providers'
+import type { OAuthProvider, SignInProviderDefinition } from './providers'
 
 import { Button, Callout } from '@proj-airi/ui'
 import { computed } from 'vue'

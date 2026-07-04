@@ -1,4 +1,8 @@
-import type { OAuthProvider } from '../../libs/auth'
+// NOTICE: social sign-in provider ids are retained for the SignInPanel UI
+// surface even though the slim server authenticates via a static bearer token.
+// The panel primarily collects a token now; these definitions stay so the
+// component type surface remains stable.
+export type OAuthProvider = 'google' | 'github'
 
 export interface SignInProviderDefinition {
   id: OAuthProvider

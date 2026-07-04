@@ -1245,6 +1245,12 @@ pages:
         title: Bilibili / IndexTTS
         callout_indextts2_unavailable_title: 有限支援
         callout_indextts2_unavailable: IndexTTS2 目前尚未支援，請改用 IndexTTS。
+      chattts:
+        description: 自架 ChatTTS（OpenAI 相容介面）
+        title: ChatTTS
+      funasr:
+        description: 自架 FunASR（OpenAI 相容介面）
+        title: FunASR
       azure-ai-foundry:
         description: Azure AI Foundry
         title: Azure AI Foundry

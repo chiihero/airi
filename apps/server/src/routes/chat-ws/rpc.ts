@@ -1,6 +1,6 @@
 import type { HonoWsInvocableEventContext } from '@moeru/eventa/adapters/websocket/hono'
 
-import type { EngagementMetrics } from '../../otel'
+import type { EngagementMetrics } from '../../libs/metrics'
 import type { ChatService } from '../../services/domain/chats'
 import type { ChatBroadcastCoordinator } from './broadcast'
 import type { ChatConnectionRegistry } from './connection-registry'

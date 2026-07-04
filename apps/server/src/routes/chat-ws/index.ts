@@ -1,6 +1,6 @@
 import type Redis from 'ioredis'
 
-import type { EngagementMetrics } from '../../otel'
+import type { EngagementMetrics } from '../../libs/metrics'
 import type { ChatService } from '../../services/domain/chats'
 
 import { useLogger } from '@guiiai/logg'

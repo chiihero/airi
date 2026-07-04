@@ -1245,6 +1245,12 @@ pages:
         title: Bilibili / IndexTTS
         callout_indextts2_unavailable_title: Support limité
         callout_indextts2_unavailable: Le support pour IndexTTS2 est actuellement indisponible. Veuillez utiliser IndexTTS.
+      chattts:
+        description: ChatTTS auto-hébergé (API compatible OpenAI)
+        title: ChatTTS
+      funasr:
+        description: FunASR auto-hébergé (API compatible OpenAI)
+        title: FunASR
       azure-ai-foundry:
         description: Azure AI Foundry
         title: Azure AI Foundry

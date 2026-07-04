@@ -1245,6 +1245,12 @@ pages:
         title: Bilibili / IndexTTS
         callout_indextts2_unavailable_title: Hỗ trợ hạn chế
         callout_indextts2_unavailable: IndexTTS2 hiện chưa hỗ trợ. Vui lòng dùng IndexTTS.
+      chattts:
+        description: ChatTTS tự host (API tương thích OpenAI)
+        title: ChatTTS
+      funasr:
+        description: FunASR tự host (API tương thích OpenAI)
+        title: FunASR
       azure-ai-foundry:
         description: Azure AI Foundry
         title: Azure AI Foundry

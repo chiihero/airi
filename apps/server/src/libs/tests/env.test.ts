@@ -8,11 +8,7 @@ function baseEnv(): Record<string, string> {
   return {
     DATABASE_URL: 'postgres://example',
     REDIS_URL: 'redis://example',
-    BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long',
-    AUTH_GOOGLE_CLIENT_ID: 'google-client',
-    AUTH_GOOGLE_CLIENT_SECRET: 'google-secret',
-    AUTH_GITHUB_CLIENT_ID: 'github-client',
-    AUTH_GITHUB_CLIENT_SECRET: 'github-secret',
+    TEST_AUTH_TOKEN: 'test-static-token',
     // Required: a deterministic 32-byte base64 value so env parse succeeds.
     LLM_ROUTER_MASTER_KEY: Buffer.alloc(32, 0xAA).toString('base64'),
   }
@@ -41,8 +37,7 @@ describe('parseEnv', () => {
 
     expect(env.DATABASE_URL).toBe('postgres://example')
     expect(env.REDIS_URL).toBe('redis://example')
-    expect(env.AUTH_UI_URL).toBe('https://accounts.airi.build/ui')
-    expect(env.ADMIN_UI_URL).toBe('https://admin.airi.build')
+    expect(env.TEST_AUTH_TOKEN).toBe('test-static-token')
     expect(env.ADDITIONAL_TRUSTED_ORIGINS).toEqual([])
   })
 

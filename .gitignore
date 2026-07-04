@@ -27,6 +27,14 @@ lerna-debug.log*
 # e.g. Claude Code settings.local.json
 *.local.*
 
+# Environment files with secrets — keep templates tracked, ignore real values.
+# NOTICE: .env in this repo holds DATABASE_URL/LLM_ROUTER_MASTER_KEY/better-auth
+# secrets. Only .env.example / .env.*.example patterns are committed.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
 # Audio binaries
 *.pcm
 *.wav
@@ -140,3 +148,8 @@ apps/stage-tamagotchi/electron.vite.config.*.mjs
 
 docs/ai/context/verifications/
 .playwright-mcp/
+
+# Local self-hosted services (FunASR STT venv, model cache, etc.)
+/stt/
+/tts/
+/.omo

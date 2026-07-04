@@ -13,6 +13,10 @@ import {
  * Register auth callback listeners at the renderer service level so they
  * persist for the window's lifetime, independent of any Vue component's
  * mount/unmount lifecycle.
+ *
+ * In the slim build the main process forwards the static token it received
+ * from the token-entry prompt (no OIDC exchange, no refresh token). The
+ * renderer persists it and lets fetchSession resolve the identity.
  */
 export function initializeElectronAuthCallbackBridge() {
   const context = getElectronEventaContext()
@@ -24,16 +28,7 @@ export function initializeElectronAuthCallbackBridge() {
 
     try {
       const authStore = useAuthStore()
-      authStore.token = tokens.accessToken
-
-      if (tokens.refreshToken) {
-        authStore.refreshToken = tokens.refreshToken
-      }
-
-      authStore.oidcClientId = import.meta.env.VITE_OIDC_CLIENT_ID || 'airi-stage-electron'
-      authStore.tokenExpiry = Date.now() + tokens.expiresIn * 1000
-      authStore.scheduleTokenRefresh(tokens.expiresIn)
-
+      authStore.setStaticToken(tokens.accessToken)
       await fetchSession()
     }
     catch (error) {

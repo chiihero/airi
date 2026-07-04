@@ -12,6 +12,7 @@ import { ref, toRaw, watch } from 'vue'
 
 import { useAnalytics } from '../composables'
 import { activeTurnSpan, startSpan } from '../composables/use-io-tracer'
+import { useMemory } from '../composables/use-memory'
 import { extractMessageText, isCloudSyncableMessage } from '../libs/chat-sync'
 import { createMinecraftContext } from './chat/context-providers'
 import { useChatContextStore } from './chat/context-store'
@@ -72,6 +73,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   const chatContext = useChatContextStore()
   const cardStore = useAiriCardStore()
   const contextObservability = useContextObservabilityStore()
+  const { recalledMemoryPrompt, refreshMemoryForPrompt, memorizeExchange } = useMemory()
   const { activeSessionId } = storeToRefs(chatSession)
   const { streamingMessage } = storeToRefs(chatStream)
 
@@ -176,7 +178,17 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     },
     getActiveSessionId: () => activeSessionId.value,
     getActiveProvider: () => activeProvider.value,
-    getSystemPromptSupplement: () => llmToolsetPromptsStore.activeToolsetPrompt,
+    // NOTICE: memory prompt is prepended to the toolset prompt so the LLM sees
+    // recalled context for the upcoming turn. refreshMemoryForPrompt runs in the
+    // onBeforeSend hook below, updating recalledMemoryPrompt right before this
+    // is read during message composition.
+    getSystemPromptSupplement: () => {
+      const toolsetPrompt = llmToolsetPromptsStore.activeToolsetPrompt
+      const memory = recalledMemoryPrompt.value
+      if (!memory)
+        return toolsetPrompt
+      return toolsetPrompt ? `${memory}\n\n${toolsetPrompt}` : memory
+    },
     runtimeContextProviders: [
       createMinecraftContext,
     ],
@@ -360,6 +372,24 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   function getPendingQueuedSendSnapshot() {
     return runtime.getPendingQueuedSendSnapshot()
   }
+
+  // NOTICE: memory pipeline wiring. onBeforeSend retrieves relevant memories
+  // (keyword match over IndexedDB) and refreshes the shared prompt fragment
+  // that getSystemPromptSupplement reads during composition. onChatTurnComplete
+  // persists the completed exchange so future turns can recall it. Both are
+  // fire-and-forget — memory I/O must never block the LLM stream.
+  runtime.hooks.onBeforeSend(async (message: string) => {
+    void refreshMemoryForPrompt(message, activeSessionId.value ?? undefined)
+  })
+  runtime.hooks.onChatTurnComplete(async (chat: { outputText: string }) => {
+    // The user message for this turn is the last composed input; the runtime
+    // exposes outputText (assistant). We capture the user text from the
+    // session store's latest user message to avoid threading it through hooks.
+    const messages = chatSession.getSessionMessages(activeSessionId.value)
+    const lastUser = [...messages].reverse().find(m => m.role === 'user')
+    const userText = lastUser ? extractMessageText(lastUser) : ''
+    void memorizeExchange(userText, chat.outputText, activeSessionId.value ?? undefined)
+  })
 
   return {
     sending,

@@ -25,19 +25,13 @@ patchedDependencies:
   '@xsai/generate-text@0.5.0-beta.2': patches/@xsai__generate-text@0.5.0-beta.2.patch
   '@xsai/shared-chat@0.5.0-beta.2': patches/@xsai__shared-chat@0.5.0-beta.2.patch
   '@xsai/stream-text@0.5.0-beta.2': patches/@xsai__stream-text@0.5.0-beta.2.patch
-  mineflayer-pathfinder: patches/mineflayer-pathfinder.patch
   pixi-live2d-display: patches/pixi-live2d-display.patch
   sponsorkit@17.1.0: patches/sponsorkit@17.1.0.patch
   uiohook-napi@1.5.5: patches/uiohook-napi@1.5.5.patch
 catalog:
   '@alexanderolsen/libsamplerate-js': ^2.1.2
   '@antfu/eslint-config': ^8.2.0
-  '@anthropic-ai/claude-code': ^2.1.114
   '@arethetypeswrong/core': ^0.18.2
-  '@ax-llm/ax': ^19.0.43
-  '@better-auth/cli': ^1.4.21
-  '@better-auth/drizzle-adapter': ^1.6.5
-  '@better-auth/oauth-provider': 1.5.6
   '@capacitor/android': ^8.3.1
   '@capacitor/app': ^8.1.0
   '@capacitor/barcode-scanner': ^3.0.2
@@ -46,7 +40,6 @@ catalog:
   '@capacitor/ios': ^8.3.1
   '@capacitor/local-notifications': ^8.0.2
   '@date-fns/utc': ^2.1.1
-  '@discordjs/voice': ^0.19.2
   '@dotenvx/dotenvx': ^1.61.1
   '@electric-sql/pglite': ^0.4.4
   '@electron-toolkit/eslint-config-ts': ^3.1.0
@@ -57,7 +50,6 @@ catalog:
   '@esotericsoftware/spine-webgl': ~4.2.0
   '@esotericsoftware/spine-webgl-4-0': npm:@esotericsoftware/spine-webgl@~4.0.31
   '@esotericsoftware/spine-webgl-4-1': npm:@esotericsoftware/spine-webgl@~4.1.56
-  '@ffmpeg-installer/ffmpeg': ^1.1.0
   '@fontsource-variable/comfortaa': ^5.2.8
   '@fontsource-variable/dm-sans': ^5.2.8
   '@fontsource-variable/jura': ^5.2.7
@@ -70,12 +62,10 @@ catalog:
   '@fontsource/kiwi-maru': ^5.2.8
   '@fontsource/m-plus-rounded-1c': ^5.2.10
   '@formkit/auto-animate': ^0.9.0
-  '@grammyjs/files': ^1.2.0
   '@guiiai/logg': ^1.2.11
   '@histoire/plugin-vue': 1.0.0-beta.1
   '@hono/node-server': ^1.19.14
   '@hono/node-ws': ^1.3.0
-  '@hono/otel': ^1.1.2
   '@huggingface/transformers': ^3.8.1
   '@iconify-json/carbon': ^1.2.20
   '@iconify-json/eos-icons': ^1.2.4
@@ -96,10 +86,6 @@ catalog:
   '@iconify/vue': ^5.0.0
   '@intlify/core': ^11.3.2
   '@intlify/unplugin-vue-i18n': ^11.0.7
-  '@langfuse/otel': ^5.4.0
-  '@langfuse/tracing': ^5.4.0
-  '@laplace.live/event-bridge-sdk': ^1.0.22
-  '@laplace.live/event-types': ^2.0.14
   '@lemonneko/crop-empty-pixels': 0.1.1
   '@mdit/plugin-footnote': ^0.23.2
   '@mdit/plugin-tasklist': ^0.23.2
@@ -111,25 +97,8 @@ catalog:
   '@napi-rs/image': ^1.12.0
   '@nekopaw/tempora': 0.4.0-alpha.1
   '@opentelemetry/api': ^1.9.1
-  '@opentelemetry/api-logs': ^0.215.0
-  '@opentelemetry/auto-instrumentations-node': ^0.73.0
   '@opentelemetry/core': ^2.7.0
-  '@opentelemetry/exporter-logs-otlp-proto': ^0.215.0
-  '@opentelemetry/exporter-metrics-otlp-proto': ^0.215.0
-  '@opentelemetry/exporter-trace-otlp-proto': ^0.215.0
-  '@opentelemetry/instrumentation': ^0.215.0
-  '@opentelemetry/instrumentation-http': ^0.215.0
-  '@opentelemetry/instrumentation-ioredis': ^0.63.0
-  '@opentelemetry/instrumentation-pg': ^0.67.0
-  '@opentelemetry/instrumentation-runtime-node': ^0.28.0
-  '@opentelemetry/instrumentation-undici': ^0.25.0
-  '@opentelemetry/resources': ^2.7.0
-  '@opentelemetry/sdk-logs': ^0.215.0
-  '@opentelemetry/sdk-metrics': ^2.7.0
-  '@opentelemetry/sdk-node': ^0.215.0
   '@opentelemetry/sdk-trace-base': ^2.7.0
-  '@opentelemetry/sdk-trace-node': ^2.7.0
-  '@opentelemetry/semantic-conventions': ^1.40.0
   '@pinia/colada': ^1.2.1
   '@pinia/testing': ^1.0.3
   '@pixi/app': ^6.5.10
@@ -164,7 +133,6 @@ catalog:
   '@shikijs/markdown-it': ^4.0.2
   '@shikijs/rehype': ^4.0.2
   '@shopify/draggable': ^1.2.1
-  '@snazzah/davey': ^0.1.11
   '@stdlib/string-base-kebabcase': ^0.2.3
   '@takumi-rs/image-response': 1.0.0-beta.20
   '@tresjs/cientos': ^5.7.0
@@ -182,10 +150,8 @@ catalog:
   '@types/splitpanes': ^2.2.6
   '@types/three': ^0.184.0
   '@types/unist': ^3.0.3
-  '@types/vscode': ^1.116.0
   '@types/whatwg-mimetype': ^5.0.0
   '@types/ws': ^8.18.1
-  '@types/xast': ^2.0.4
   '@types/yauzl': ^2.10.3
   '@unocss/eslint-config': ^66.6.8
   '@unocss/eslint-plugin': ^66.6.8
@@ -193,7 +159,6 @@ catalog:
   '@unocss/preset-web-fonts': ^66.6.8
   '@unocss/reset': ^66.6.8
   '@valibot/to-json-schema': 1.0.0-rc.0
-  '@velin-dev/core': ^0.4.0
   '@vitejs/plugin-vue': ^6.0.6
   '@vue-macros/volar': ^3.1.2
   '@vue/test-utils': ^2.4.6
@@ -202,7 +167,6 @@ catalog:
   '@vueuse/motion': ^3.0.3
   '@vueuse/shared': ^14.2.1
   '@webgpu/types': ^0.1.69
-  '@wxt-dev/module-vue': ^1.0.3
   '@xsai-ext/providers': 0.5.0-beta.2
   '@xsai-transformers/embed': ^0.1.0
   '@xsai-transformers/shared': ^0.1.0
@@ -221,13 +185,9 @@ catalog:
   alien-signals: ^3.1.2
   animejs: ^4.3.6
   async-mutex: 0.5.0
-  awilix: ^13.0.3
-  best-effort-json-parser: ^1.4.0
-  better-auth: ^1.6.5
   builder-util-runtime: ^9.5.1
   bumpp: ^11.0.1
   cac: ^7.0.0
-  canvas: ^3.2.3
   capacitor-native-settings: ^8.1.0
   chess.js: ^1.4.0
   clustr: ^1.0.2
@@ -237,10 +197,8 @@ catalog:
   culori: ^4.0.2
   d3: 7.9.0
   date-fns: ^4.1.0
-  debug: ^4.4.3
   defu: ^6.1.7
   destr: ^2.0.5
-  discord.js: ^14.26.3
   dompurify: ^3.4.0
   driver.js: ^1.4.0
   drizzle-kit: ^0.31.10
@@ -256,12 +214,9 @@ catalog:
   es-toolkit: ^1.45.1
   eslint: ^10.2.1
   eslint-plugin-oxlint: ^1.60.0
-  eventemitter3: ^5.0.4
   floating-vue: ^5.2.2
-  fluent-ffmpeg: ^2.1.3
   get-port-please: ^3.2.0
   gpuu: ^1.0.7
-  grammy: ^1.42.0
   gray-matter: ^4.0.3
   h3: 2.0.1-rc.20
   hfup: ^1.0.4
@@ -273,14 +228,11 @@ catalog:
   injeca: ^0.2.0
   ioredis: ^5.10.1
   is-network-error: ^1.3.1
-  isolated-vm: ^6.1.2
-  jose: ^6.2.2
   jsdom: ^29.0.2
   jszip: ^3.10.1
   knip: ^6.4.1
   kokoro-js: ^1.2.1
   less: ^4.6.4
-  libsodium-wrappers: ^0.8.3
   localforage: ^1.10.0
   mark.js: ^8.11.1
   markdown-it: ^14.1.1
@@ -288,14 +240,6 @@ catalog:
   mediabunny: ^1.40.1
   meow: ^14.1.0
   meta-png: ^1.0.6
-  minecraft-data: 3.102.3
-  mineflayer: ^4.33.0
-  mineflayer-armor-manager: ^2.0.1
-  mineflayer-auto-eat: ^5.0.3
-  mineflayer-collectblock: ^1.6.0
-  mineflayer-pathfinder: ^2.4.5
-  mineflayer-pvp: ^1.3.2
-  mineflayer-tool: ^1.2.0
   minisearch: ^7.2.0
   mkcert: ^3.2.0
   motion-v: ^2.2.1
@@ -306,10 +250,8 @@ catalog:
   nprogress: ^0.2.0
   ofetch: ^1.5.1
   onnxruntime-web: ^1.24.3
-  opusscript: ^0.1.1
   oxc-minify: ^0.126.0
   oxlint: ^1.60.0
-  p-limit: ^7.3.0
   pathe: ^2.0.3
   pg: ^8.20.0
   pinia: ^3.0.4
@@ -321,12 +263,6 @@ catalog:
   postgres: ^3.4.9
   posthog-js: 1.306.1
   postprocessing: ^6.39.1
-  prismarine-block: ^1.23.0
-  prismarine-entity: ^2.6.0
-  prismarine-item: ^1.18.0
-  prismarine-recipe: ^1.5.0
-  prismarine-viewer: ^1.33.0
-  prismarine-windows: ^2.10.0
   publint: ^0.3.18
   rehype-katex: ^7.0.1
   rehype-parse: ^9.0.1
@@ -336,7 +272,6 @@ catalog:
   remark-parse: ^11.0.0
   remark-rehype: ^11.1.2
   replicate: ^1.4.0
-  resend: ^6.12.2
   rollup: ^4.60.1
   semver: ^7.7.4
   shiki: ^4.0.2
@@ -346,11 +281,8 @@ catalog:
   sponsors-svg: ^0.3.0
   srvx: ^0.11.15
   std-env: ^4.1.0
-  stockfish: ^18.0.7
-  stripe: ^22.0.2
   superjson: ^2.2.6
   taze: ^19.11.0
-  telegram: ^2.26.22
   three: ^0.184.0
   tinyexec: ^1.1.1
   tinyglobby: ^0.2.16
@@ -377,7 +309,6 @@ catalog:
   uuid: ^13.0.0
   valibot: ^1.3.1
   vaul-vue: ^0.4.1
-  vec3: ^0.2.0
   vieval: ^0.0.5
   vite: ^8.0.8
   vite-bundle-visualizer: ^1.2.1
@@ -388,7 +319,6 @@ catalog:
   vite-plugin-vue-layouts: ^0.11.0
   vitepress: 2.0.0-alpha.17
   vitest-browser-vue: ^2.1.0
-  vscode-ext-gen: ^1.6.0
   vue: ^3.5.32
   vue-demi: ^0.14.10
   vue-i18n: ^11.3.2
@@ -396,20 +326,17 @@ catalog:
   vue-router: ^5.0.4
   vue-sonner: ^2.0.9
   vue-tsc: ^3.2.6
-  wavefile: ^11.0.0
   web-haptics: ^0.0.6
   whatwg-mimetype: ^5.0.0
   wlipsync: ^1.3.0
   workbox-window: ^7.4.0
   ws: ^8.20.0
-  wxt: ^0.20.24
   xast-util-to-xml: ^4.0.0
   xastscript: ^4.0.0
   xsschema: 0.5.0-beta.2
   yaml: ^2.8.3
   yauzl: ^3.3.0
   zod: ^4.3.6
-  zod-to-json-schema: ^3.25.2
 catalogs:
   vitest:
     '@vitest/browser-playwright': ^4.1.4

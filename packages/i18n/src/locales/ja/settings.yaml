@@ -1245,6 +1245,12 @@ pages:
         title: Bilibili/IndexTTS
         callout_indextts2_unavailable_title: 限定的なサポート
         callout_indextts2_unavailable: 現在、IndexTTS2のサポートはご利用いただけません。IndexTTSをご利用ください。
+      chattts:
+        description: セルフホスト ChatTTS（OpenAI 互換 API）
+        title: ChatTTS
+      funasr:
+        description: セルフホスト FunASR（OpenAI 互換 API）
+        title: FunASR
       azure-ai-foundry:
         description: Azure AI Foundry
         title: Azure AI Foundry

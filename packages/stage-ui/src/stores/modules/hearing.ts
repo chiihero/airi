@@ -15,9 +15,7 @@ import vadWorkletUrl from '../../workers/vad/process.worklet?worker&url'
 
 import { useAnalytics } from '../../composables/use-analytics'
 import { activeTurnSpan, startSpan } from '../../composables/use-io-tracer'
-import { OFFICIAL_TRANSCRIPTION_PROVIDER_ID } from '../../libs/providers'
 import { useProvidersStore } from '../providers'
-import { streamAliyunTranscription } from '../providers/aliyun/stream-transcription'
 import { streamWebSpeechAPITranscription } from '../providers/web-speech-api'
 
 function errorMessage(err: unknown): string {
@@ -227,11 +225,12 @@ export function resolveTranscriptionFileName(file: File, explicitFileName?: stri
   return 'recording.wav'
 }
 
-const STREAM_TRANSCRIPTION_EXECUTORS: Record<string, StreamTranscription> = {
-  'aliyun-nls-transcription': streamAliyunTranscription,
-  [OFFICIAL_TRANSCRIPTION_PROVIDER_ID]: streamAliyunTranscription,
-  // Web Speech API is handled specially in transcribeForMediaStream since it works directly with MediaStream
-}
+// NOTICE: cloud streaming transcription executors (aliyun-nls, official relay)
+// were removed with the aliyun provider module. The map is kept empty so the
+// resolver returns undefined and callers fall back to the default xsAI
+// generateTranscription path. Web Speech API is handled separately in
+// transcribeForMediaStream because it works directly with MediaStream.
+const STREAM_TRANSCRIPTION_EXECUTORS: Record<string, StreamTranscription> = {}
 
 export function resolveStreamTranscriptionExecutor(providerId: string): StreamTranscription | undefined {
   return STREAM_TRANSCRIPTION_EXECUTORS[providerId]

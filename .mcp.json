@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "codebase-memory-mcp": {
+      "command": "D:\\Projects\\MultiProjects\\AIRI\\.codebase-memory\\codebase-memory-mcp.exe",
+      "args": [],
+      "cwd": "D:\\Projects\\MultiProjects\\AIRI"
+    }
+  }
+}

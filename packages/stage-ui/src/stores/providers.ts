@@ -9,19 +9,9 @@ import type {
   TranscriptionProviderWithExtraOptions,
 } from '@xsai-ext/providers/utils'
 import type { ProgressInfo } from '@xsai-transformers/shared/types'
-import type {
-  ListVoicesOptions,
-  UnAlibabaCloudOptions,
-  UnDeepgramOptions,
-  UnElevenLabsOptions,
-  UnMicrosoftOptions,
-  UnVolcengineOptions,
-  VoiceProviderWithExtraOptions,
-} from 'unspeech'
 
 import type { ProviderSourceDeployment, ProviderSourcePricing } from '../libs/providers/source-metadata'
 import type { ProviderOnboardingField } from '../libs/providers/types'
-import type { AliyunRealtimeSpeechExtraOptions } from './providers/aliyun/stream-transcription'
 
 import { errorMessageFrom } from '@moeru/std'
 import { isCustomProvidersDisabled, isStageCapacitor, isStageTamagotchi, isUrl } from '@proj-airi/stage-shared'
@@ -40,14 +30,6 @@ import {
 import { listModels } from '@xsai/model'
 import { uniqBy } from 'es-toolkit'
 import { defineStore } from 'pinia'
-import {
-  createUnAlibabaCloud,
-  createUnDeepgram,
-  createUnElevenLabs,
-  createUnMicrosoft,
-  createUnVolcengine,
-  listVoices,
-} from 'unspeech'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -57,30 +39,10 @@ import { resolveProviderSourceMetadata } from '../libs/providers/source-metadata
 import { getDefaultKokoroModel, KOKORO_MODELS, kokoroModelsToModelInfo } from '../workers/kokoro/constants'
 import { capturePosthogEvent, ensurePosthogInitialized, isPosthogAvailableInBuild } from './analytics/posthog'
 import { useAuthStore } from './auth'
-import { createAliyunNLSProvider as createAliyunNlsStreamProvider } from './providers/aliyun/stream-transcription'
 import { convertProviderDefinitionsToMetadata } from './providers/converters'
-import { models as elevenLabsModels } from './providers/elevenlabs/list-models'
-import { buildGoogleGeminiSpeechProvider } from './providers/google-gemini-speech'
 import { buildOpenAICompatibleProvider } from './providers/openai-compatible-builder'
-import { buildOpenRouterAudioSpeechProvider } from './providers/openrouter/audio-speech'
 import { createWebSpeechAPIProvider } from './providers/web-speech-api'
 import { useSettingsAnalytics } from './settings/analytics'
-
-const ALIYUN_NLS_REGIONS = [
-  'cn-shanghai',
-  'cn-shanghai-internal',
-  'cn-beijing',
-  'cn-beijing-internal',
-  'cn-shenzhen',
-  'cn-shenzhen-internal',
-] as const
-
-type AliyunNlsRegion = typeof ALIYUN_NLS_REGIONS[number]
-
-function toListVoicesOptions<T>(provider: VoiceProviderWithExtraOptions<T>, options?: T): ListVoicesOptions {
-  const { fetch: _fetch, ...voiceOptions } = provider.voice(options)
-  return voiceOptions
-}
 
 /**
  * Classifies provider ids into bounded analytics buckets.
@@ -835,96 +797,6 @@ export const useProvidersStore = defineStore('providers', () => {
         },
       },
     }),
-    'aliyun-nls-transcription': {
-      id: 'aliyun-nls-transcription',
-      category: 'transcription',
-      tasks: ['speech-to-text', 'automatic-speech-recognition', 'asr', 'stt', 'streaming-transcription'],
-      nameKey: 'settings.pages.providers.provider.aliyun-nls.title',
-      name: 'Aliyun NLS',
-      descriptionKey: 'settings.pages.providers.provider.aliyun-nls.description',
-      description: 'nls-console.aliyun.com',
-      icon: 'i-lobe-icons:alibabacloud',
-      defaultOptions: () => ({
-        accessKeyId: '',
-        accessKeySecret: '',
-        appKey: '',
-        region: 'cn-shanghai',
-      }),
-      transcriptionFeatures: {
-        supportsGenerate: false,
-        supportsStreamOutput: true,
-        supportsStreamInput: true,
-      },
-      createProvider: async (config) => {
-        const toString = (value: unknown) => typeof value === 'string' ? value.trim() : ''
-
-        const accessKeyId = toString(config.accessKeyId)
-        const accessKeySecret = toString(config.accessKeySecret)
-        const appKey = toString(config.appKey)
-        const region = toString(config.region)
-        const resolvedRegion = ALIYUN_NLS_REGIONS.includes(region as AliyunNlsRegion) ? region as AliyunNlsRegion : 'cn-shanghai'
-
-        if (!accessKeyId || !accessKeySecret || !appKey)
-          throw new Error('Aliyun NLS credentials are incomplete.')
-
-        const provider = createAliyunNlsStreamProvider(accessKeyId, accessKeySecret, appKey, { region: resolvedRegion })
-
-        return {
-          transcription: (model: string, extraOptions?: AliyunRealtimeSpeechExtraOptions) => provider.speech(model, {
-            ...extraOptions,
-            sessionOptions: {
-              format: 'pcm',
-              sample_rate: 16000,
-              enable_punctuation_prediction: true,
-              enable_intermediate_result: true,
-              enable_words: true,
-              ...extraOptions?.sessionOptions,
-            },
-          }),
-        } as TranscriptionProviderWithExtraOptions<string, AliyunRealtimeSpeechExtraOptions>
-      },
-      capabilities: {
-        listModels: async () => {
-          return [
-            {
-              id: 'aliyun-nls-v1',
-              name: 'Aliyun NLS Realtime',
-              provider: 'aliyun-nls-transcription',
-              description: 'Realtime streaming transcription using Aliyun NLS.',
-              contextLength: 0,
-              deprecated: false,
-            },
-          ]
-        },
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors: Error[] = []
-          const toString = (value: unknown) => typeof value === 'string' ? value.trim() : ''
-
-          const accessKeyId = toString(config.accessKeyId)
-          const accessKeySecret = toString(config.accessKeySecret)
-          const appKey = toString(config.appKey)
-          const region = toString(config.region)
-
-          if (!accessKeyId)
-            errors.push(new Error('Access Key ID is required.'))
-          if (!accessKeySecret)
-            errors.push(new Error('Access Key Secret is required.'))
-          if (!appKey)
-            errors.push(new Error('App Key is required.'))
-          if (region && !ALIYUN_NLS_REGIONS.includes(region as AliyunNlsRegion))
-            errors.push(new Error('Region is invalid.'))
-
-          return {
-            errors,
-            reason: errors.length > 0 ? errors.map(error => error.message).join(', ') : '',
-            valid: errors.length === 0,
-          }
-        },
-      },
-    },
     'browser-web-speech-api': {
       id: 'browser-web-speech-api',
       category: 'transcription',
@@ -999,241 +871,6 @@ export const useProvidersStore = defineStore('providers', () => {
             errors: [],
             reason: '',
             valid: true,
-          }
-        },
-      },
-    },
-    'elevenlabs': {
-      id: 'elevenlabs',
-      category: 'speech',
-      tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.elevenlabs.title',
-      name: 'ElevenLabs',
-      descriptionKey: 'settings.pages.providers.provider.elevenlabs.description',
-      description: 'elevenlabs.io',
-      icon: 'i-simple-icons:elevenlabs',
-      defaultOptions: () => ({
-        baseUrl: 'https://unspeech.hyp3r.link/v1/',
-        voiceSettings: {
-          similarityBoost: 0.75,
-          stability: 0.5,
-        },
-      }),
-      createProvider: async config => createUnElevenLabs((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as SpeechProviderWithExtraOptions<string, UnElevenLabsOptions>,
-      capabilities: {
-        listModels: async () => {
-          return elevenLabsModels.map((model) => {
-            return {
-              id: model.model_id,
-              name: model.name,
-              provider: 'elevenlabs',
-              description: model.description,
-              contextLength: 0,
-              deprecated: false,
-            } satisfies ModelInfo
-          })
-        },
-        listVoices: async (config) => {
-          const provider = createUnElevenLabs((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as VoiceProviderWithExtraOptions<UnElevenLabsOptions>
-
-          const voices = await listVoices(toListVoicesOptions(provider))
-
-          if (!voices || !Array.isArray(voices)) {
-            return []
-          }
-
-          // Find indices of Aria and Bill
-          const ariaIndex = voices.findIndex(voice => voice.name.includes('Aria'))
-          const billIndex = voices.findIndex(voice => voice.name.includes('Bill'))
-
-          // Determine the range to move (ensure valid indices and proper order)
-          const startIndex = ariaIndex !== -1 ? ariaIndex : 0
-          const endIndex = billIndex !== -1 ? billIndex : voices.length - 1
-          const lowerIndex = Math.min(startIndex, endIndex)
-          const higherIndex = Math.max(startIndex, endIndex)
-
-          // Rearrange voices: voices outside the range first, then voices within the range
-          const rearrangedVoices = [
-            ...voices.slice(0, lowerIndex),
-            ...voices.slice(higherIndex + 1),
-            ...voices.slice(lowerIndex, higherIndex + 1),
-          ]
-
-          return rearrangedVoices.map((voice) => {
-            return {
-              id: voice.id,
-              name: voice.name,
-              provider: 'elevenlabs',
-              previewURL: voice.preview_audio_url,
-              languages: voice.languages,
-            }
-          })
-        },
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors = [
-            !config.apiKey && new Error('API key is required.'),
-            !config.baseUrl && new Error('Base URL is required.'),
-          ].filter(Boolean)
-
-          const res = baseUrlValidator.value(config.baseUrl)
-          if (res) {
-            return res
-          }
-
-          return {
-            errors,
-            reason: errors.filter(e => e).map(e => String(e)).join(', ') || '',
-            valid: !!config.apiKey && !!config.baseUrl,
-          }
-        },
-      },
-    },
-    'deepgram-tts': {
-      id: 'deepgram-tts',
-      category: 'speech',
-      tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.deepgram-tts.title',
-      name: 'Deepgram',
-      descriptionKey: 'settings.pages.providers.provider.deepgram-tts.description',
-      description: 'deepgram.com',
-      icon: 'i-simple-icons:deepgram',
-      defaultOptions: () => ({
-        baseUrl: 'https://unspeech.hyp3r.link/v1/',
-      }),
-      createProvider: async (config) => {
-        const provider = createUnDeepgram((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as SpeechProviderWithExtraOptions<string, UnDeepgramOptions>
-        return provider
-      },
-      capabilities: {
-        listModels: async () => {
-          return [
-            {
-              id: 'aura-2',
-              name: 'Aura 2',
-              provider: 'deepgram-tts',
-              description: 'Latest generation Aura model',
-              contextLength: 0,
-              deprecated: false,
-            },
-            {
-              id: 'aura-1',
-              name: 'Aura 1',
-              provider: 'deepgram-tts',
-              description: 'First generation Aura model',
-              contextLength: 0,
-              deprecated: false,
-            },
-            {
-              id: 'aura',
-              name: 'Aura (Legacy)',
-              provider: 'deepgram-tts',
-              description: 'Original Aura model',
-              contextLength: 0,
-              deprecated: true,
-            },
-          ]
-        },
-        listVoices: async (config) => {
-          const provider = createUnDeepgram((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as VoiceProviderWithExtraOptions<UnDeepgramOptions>
-
-          const voices = await listVoices(toListVoicesOptions(provider))
-
-          return voices.map((voice) => {
-            return {
-              id: voice.id,
-              name: voice.name,
-              provider: 'deepgram-tts',
-              description: voice.description,
-              languages: voice.languages,
-              gender: voice.labels?.gender,
-            }
-          })
-        },
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors: Error[] = []
-          if (!config.apiKey) {
-            errors.push(new Error('API key is required.'))
-          }
-
-          const baseUrlValidationResult = baseUrlValidator.value(config.baseUrl)
-          if (baseUrlValidationResult) {
-            errors.push(...(baseUrlValidationResult.errors as Error[]))
-          }
-
-          return {
-            errors,
-            reason: errors.map(e => e.message).join(', '),
-            valid: errors.length === 0,
-          }
-        },
-      },
-    },
-    'microsoft-speech': {
-      id: 'microsoft-speech',
-      category: 'speech',
-      tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.microsoft-speech.title',
-      name: 'Microsoft / Azure Speech',
-      descriptionKey: 'settings.pages.providers.provider.microsoft-speech.description',
-      description: 'speech.microsoft.com',
-      iconColor: 'i-lobe-icons:microsoft',
-      defaultOptions: () => ({
-        baseUrl: 'https://unspeech.hyp3r.link/v1/',
-      }),
-      createProvider: async config => createUnMicrosoft((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as SpeechProviderWithExtraOptions<string, UnMicrosoftOptions>,
-      capabilities: {
-        listModels: async () => {
-          return [
-            {
-              id: 'v1',
-              name: 'v1',
-              provider: 'microsoft-speech',
-              description: '',
-              contextLength: 0,
-              deprecated: false,
-            },
-          ]
-        },
-        listVoices: async (config) => {
-          const provider = createUnMicrosoft((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as VoiceProviderWithExtraOptions<UnMicrosoftOptions>
-
-          const voices = await listVoices(toListVoicesOptions(provider, { region: config.region as string }))
-
-          return voices.map((voice) => {
-            return {
-              id: voice.id,
-              name: voice.name,
-              provider: 'microsoft-speech',
-              previewURL: voice.preview_audio_url,
-              languages: voice.languages,
-              gender: voice.labels?.gender,
-            }
-          })
-        },
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors = [
-            !config.apiKey && new Error('API key is required.'),
-            !config.baseUrl && new Error('Base URL is required.'),
-          ].filter(Boolean)
-
-          const res = baseUrlValidator.value(config.baseUrl)
-          if (res) {
-            return res
-          }
-
-          return {
-            errors,
-            reason: errors.filter(e => e).map(e => String(e)).join(', ') || '',
-            valid: !!config.apiKey && !!config.baseUrl,
           }
         },
       },
@@ -1330,129 +967,67 @@ export const useProvidersStore = defineStore('providers', () => {
         },
       },
     },
-    'alibaba-cloud-model-studio': {
-      id: 'alibaba-cloud-model-studio',
+    // NOTICE: ChatTTS 接入使用官方自带的 examples/api/openai_api.py，
+    // 它原生暴露 OpenAI 兼容的 /v1/audio/speech 端点，generateSpeech (@xsai/generate-speech)
+    // 可直接复用，无需自建适配层。
+    // 许可证注意：ChatTTS 模型 CC BY-NC 4.0（禁商用），代码 AGPLv3+。
+    // 因此服务端须独立进程部署（本项目 tts/ 目录），AIRI 仅以 HTTP 客户端调用，不合入 AGPL 代码。
+    // voice 取值：default / alloy / echo 等（由服务端映射到说话人嵌入），不暴露 /audio/voices 端点，
+    // 故用静态音色列表，探活走 /health。
+    // 移除条件：若 ChatTTS 上游调整 voice 体系或新增 voices 端点，在此同步。
+    'chattts': {
+      id: 'chattts',
       category: 'speech',
       tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.alibaba-cloud-model-studio.title',
-      name: 'Alibaba Cloud Model Studio',
-      descriptionKey: 'settings.pages.providers.provider.alibaba-cloud-model-studio.description',
-      description: 'bailian.console.aliyun.com',
-      iconColor: 'i-lobe-icons:alibabacloud',
+      nameKey: 'settings.pages.providers.provider.chattts.title',
+      name: 'ChatTTS',
+      descriptionKey: 'settings.pages.providers.provider.chattts.description',
+      description: 'Self-hosted ChatTTS (OpenAI-compatible)',
+      iconColor: 'i-lobe-icons:chat',
       defaultOptions: () => ({
-        baseUrl: 'https://unspeech.hyp3r.link/v1/',
+        baseUrl: 'http://localhost:9966/v1/',
+        model: 'tts-1',
       }),
-      createProvider: async config => createUnAlibabaCloud((config.apiKey as string).trim(), (config.baseUrl as string).trim()),
-      capabilities: {
-        listVoices: async (config) => {
-          const provider = createUnAlibabaCloud((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as VoiceProviderWithExtraOptions<UnAlibabaCloudOptions>
-
-          const voices = await listVoices(toListVoicesOptions(provider))
-
-          return voices.map((voice) => {
-            return {
-              id: voice.id,
-              name: voice.name,
-              provider: 'alibaba-cloud-model-studio',
-              compatibleModels: voice.compatible_models,
-              previewURL: voice.preview_audio_url,
-              languages: voice.languages,
-              gender: voice.labels?.gender,
+      createProvider: async (config) => {
+        const provider: SpeechProvider = {
+          speech: () => {
+            const req = {
+              baseURL: config.baseUrl as string,
+              model: (config.model as string) || 'tts-1',
             }
-          })
-        },
+            return req
+          },
+        }
+        return provider
+      },
+      capabilities: {
         listModels: async () => {
           return [
             {
-              id: 'cosyvoice-v1',
-              name: 'CosyVoice',
-              provider: 'alibaba-cloud-model-studio',
-              description: '',
-              contextLength: 0,
-              deprecated: false,
-            },
-            {
-              id: 'cosyvoice-v2',
-              name: 'CosyVoice (New)',
-              provider: 'alibaba-cloud-model-studio',
-              description: '',
+              id: 'tts-1',
+              name: 'ChatTTS',
+              provider: 'chattts',
+              description: 'Conversational Chinese TTS, optimized for dialogue',
               contextLength: 0,
               deprecated: false,
             },
           ]
         },
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors = [
-            !config.apiKey && new Error('API key is required.'),
-            !config.baseUrl && new Error('Base URL is required.'),
-          ].filter(Boolean)
-
-          const res = baseUrlValidator.value(config.baseUrl)
-          if (res) {
-            return res
-          }
-
-          return {
-            errors,
-            reason: errors.filter(e => e).map(e => String(e)).join(', ') || '',
-            valid: !!config.apiKey && !!config.baseUrl,
-          }
-        },
-      },
-    },
-    'volcengine': {
-      id: 'volcengine',
-      category: 'speech',
-      tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.volcengine.title',
-      name: 'settings.pages.providers.provider.volcengine.title',
-      descriptionKey: 'settings.pages.providers.provider.volcengine.description',
-      description: 'volcengine.com',
-      iconColor: 'i-lobe-icons:volcengine',
-      defaultOptions: () => ({
-        baseUrl: 'https://unspeech.hyp3r.link/v1/',
-      }),
-      createProvider: async config => createUnVolcengine((config.apiKey as string).trim(), (config.baseUrl as string).trim()),
-      capabilities: {
-        listVoices: async (config) => {
-          const provider = createUnVolcengine((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as VoiceProviderWithExtraOptions<UnVolcengineOptions>
-
-          const voices = await listVoices(toListVoicesOptions(provider))
-
-          return voices.map((voice) => {
-            return {
-              id: voice.id,
-              name: voice.name,
-              provider: 'volcano-engine',
-              previewURL: voice.preview_audio_url,
-              languages: voice.languages,
-              gender: voice.labels?.gender,
-            }
-          })
-        },
-        listModels: async () => {
+        // ChatTTS 官方 openai_api.py 不提供 /audio/voices 端点，
+        // voice 参数由服务端映射到预置说话人嵌入。这里给出静态音色列表。
+        listVoices: async () => {
           return [
-            {
-              id: 'v1',
-              name: 'v1',
-              provider: 'volcano-engine',
-              description: '',
-              contextLength: 0,
-              deprecated: false,
-            },
+            { id: 'default', name: 'Default', provider: 'chattts', gender: 'neutral', languages: [{ code: 'zh', title: 'Chinese' }, { code: 'en', title: 'English' }] },
+            { id: 'alloy', name: 'Alloy', provider: 'chattts', gender: 'female', languages: [{ code: 'zh', title: 'Chinese' }, { code: 'en', title: 'English' }] },
+            { id: 'echo', name: 'Echo', provider: 'chattts', gender: 'male', languages: [{ code: 'zh', title: 'Chinese' }, { code: 'en', title: 'English' }] },
           ]
         },
       },
       validators: {
         chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
+        validateProviderConfig: async (config) => {
           const errors = [
-            !config.apiKey && new Error('API key is required.'),
-            !config.baseUrl && new Error('Base URL is required.'),
-            !((config.app as any)?.appId) && new Error('App ID is required.'),
+            !config.baseUrl && new Error('Base URL is required. Default to http://localhost:9966/v1/ for ChatTTS.'),
           ].filter(Boolean)
 
           const res = baseUrlValidator.value(config.baseUrl)
@@ -1460,341 +1035,28 @@ export const useProvidersStore = defineStore('providers', () => {
             return res
           }
 
-          return {
-            errors,
-            reason: errors.filter(e => e).map(e => String(e)).join(', ') || '',
-            valid: !!config.apiKey && !!config.baseUrl && !!config.app && !!(config.app as any).appId,
+          // ChatTTS 官方 openai_api.py 暴露 /health 健康检查端点
+          try {
+            const controller = new AbortController()
+            const timeout = setTimeout(() => controller.abort(), 5000)
+            const baseUrl = (config.baseUrl as string).replace(/\/v1\/?$/, '/')
+            const response = await fetch(`${baseUrl}health`, { signal: controller.signal })
+            clearTimeout(timeout)
+
+            if (!response.ok) {
+              const reason = `ChatTTS unreachable: HTTP ${response.status} ${response.statusText}`
+              return { errors: [new Error(reason)], reason, valid: false }
+            }
           }
-        },
-      },
-    },
-    'minimax-speech': {
-      id: 'minimax-speech',
-      category: 'speech',
-      tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.minimax-speech.title',
-      name: 'MiniMax Speech',
-      descriptionKey: 'settings.pages.providers.provider.minimax-speech.description',
-      description: 'minimax.io',
-      icon: 'i-lobe-icons:minimax',
-      iconColor: 'i-lobe-icons:minimax-color',
-      defaultOptions: () => ({
-        apiKey: '',
-        baseUrl: 'https://api.minimax.io',
-      }),
-      createProvider: async (config) => {
-        const apiKey = (config.apiKey as string).trim()
-        const baseUrl = ((config.baseUrl as string) || 'https://api.minimax.io').replace(/\/$/, '')
-
-        const provider: SpeechProvider = {
-          speech: () => ({
-            baseURL: `${baseUrl}/v1/`,
-            model: 'speech-2.8-hd',
-            fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
-              if (!init?.body || typeof init.body !== 'string') {
-                throw new Error('Invalid request body')
-              }
-
-              const body = JSON.parse(init.body)
-              const text = body.input as string
-              const voiceId = (body.voice as string) || 'English_Graceful_Lady'
-              const model = (body.model as string) || 'speech-2.8-hd'
-
-              const response = await fetch(`${baseUrl}/v1/t2a_v2`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                  model,
-                  text,
-                  stream: true,
-                  voice_setting: {
-                    voice_id: voiceId,
-                    speed: 1,
-                    vol: 1,
-                    pitch: 0,
-                  },
-                  audio_setting: {
-                    sample_rate: 32000,
-                    bitrate: 128000,
-                    format: 'mp3',
-                    channel: 1,
-                  },
-                }),
-              })
-
-              if (!response.ok || !response.body) {
-                throw new Error(`MiniMax TTS request failed: ${response.status} ${response.statusText}`)
-              }
-
-              // Parse SSE stream and collect hex-encoded audio chunks
-              const reader = response.body.getReader()
-              const decoder = new TextDecoder()
-              const audioChunks: Uint8Array[] = []
-              let buffer = ''
-
-              while (true) {
-                const { done, value } = await reader.read()
-                if (done)
-                  break
-                buffer += decoder.decode(value, { stream: true })
-                const lines = buffer.split('\n')
-                buffer = lines.pop() || ''
-                for (const line of lines) {
-                  if (!line.startsWith('data:'))
-                    continue
-                  const jsonStr = line.slice(5).trim()
-                  if (!jsonStr || jsonStr === '[DONE]')
-                    continue
-                  try {
-                    const eventData = JSON.parse(jsonStr)
-                    const audio = eventData?.data?.audio
-                    // status 2 is the final summary chunk; skip it to avoid duplication
-                    if (audio && eventData?.data?.status !== 2) {
-                      const hexStr = audio as string
-                      const bytes = new Uint8Array(hexStr.length / 2)
-                      for (let i = 0; i < hexStr.length; i += 2) {
-                        bytes[i / 2] = Number.parseInt(hexStr.slice(i, i + 2), 16)
-                      }
-                      audioChunks.push(bytes)
-                    }
-                  }
-                  catch {
-                    // ignore malformed SSE events
-                  }
-                }
-              }
-
-              const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
-              const combined = new Uint8Array(totalLength)
-              let offset = 0
-              for (const chunk of audioChunks) {
-                combined.set(chunk, offset)
-                offset += chunk.length
-              }
-
-              return new Response(combined.buffer, {
-                status: 200,
-                headers: { 'Content-Type': 'audio/mpeg' },
-              })
-            },
-          }),
-        }
-        return provider
-      },
-      capabilities: {
-        listModels: async () => [
-          {
-            id: 'speech-2.8-hd',
-            name: 'Speech 2.8 HD',
-            provider: 'minimax-speech',
-            description: 'High-definition TTS model with natural prosody',
-            contextLength: 0,
-            deprecated: false,
-          },
-          {
-            id: 'speech-2.8-turbo',
-            name: 'Speech 2.8 Turbo',
-            provider: 'minimax-speech',
-            description: 'Fast TTS model for low-latency scenarios',
-            contextLength: 0,
-            deprecated: false,
-          },
-        ],
-        listVoices: async () => [
-          { id: 'English_Graceful_Lady', name: 'Graceful Lady', provider: 'minimax-speech', gender: 'female', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'English_Insightful_Speaker', name: 'Insightful Speaker', provider: 'minimax-speech', gender: 'male', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'English_radiant_girl', name: 'Radiant Girl', provider: 'minimax-speech', gender: 'female', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'English_Persuasive_Man', name: 'Persuasive Man', provider: 'minimax-speech', gender: 'male', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'English_Lucky_Robot', name: 'Lucky Robot', provider: 'minimax-speech', gender: 'neutral', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'English_expressive_narrator', name: 'Expressive Narrator', provider: 'minimax-speech', gender: 'neutral', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'Mandarin_Gentle_Woman', name: 'Gentle Woman', provider: 'minimax-speech', gender: 'female', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: 'Mandarin_Steadfast_Man', name: 'Steadfast Man', provider: 'minimax-speech', gender: 'male', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: 'Mandarin_Sweet_Girl', name: 'Sweet Girl', provider: 'minimax-speech', gender: 'female', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: 'Mandarin_Magnetic_Gentleman', name: 'Magnetic Gentleman', provider: 'minimax-speech', gender: 'male', languages: [{ code: 'zh', title: 'Chinese' }] },
-        ],
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors = [
-            !config.apiKey && new Error('API key is required.'),
-          ].filter(Boolean)
+          catch (err) {
+            const reason = `ChatTTS connection failed: ${String(err)}`
+            return { errors: [err as Error], reason, valid: false }
+          }
 
           return {
             errors,
             reason: errors.filter(e => e).map(e => String(e)).join(', ') || '',
-            valid: !!config.apiKey,
-          }
-        },
-      },
-    },
-    'openrouter-audio-speech': buildOpenRouterAudioSpeechProvider(v => baseUrlValidator.value(v)),
-    'mimo-audio-speech': {
-      id: 'mimo-audio-speech',
-      category: 'speech',
-      tasks: ['text-to-speech'],
-      nameKey: 'settings.pages.providers.provider.mimo.title',
-      name: 'Xiaomi MiMo',
-      descriptionKey: 'settings.pages.providers.provider.mimo.description',
-      description: 'api.xiaomimimo.com',
-      icon: 'i-simple-icons:xiaomi',
-      defaultOptions: () => ({
-        baseUrl: 'https://api.xiaomimimo.com/v1/',
-        model: 'mimo-v2.5-tts',
-        voice: 'mimo_default',
-        format: 'wav',
-      }),
-      createProvider: async (config) => {
-        const apiKey = (config.apiKey as string)?.trim() ?? ''
-        const baseUrl = ((config.baseUrl as string) || 'https://api.xiaomimimo.com/v1/').replace(/\/+$/, '')
-        const defaultModel = (config.model as string) || 'mimo-v2.5-tts'
-        const defaultVoice = (config.voice as string) || 'mimo_default'
-        const defaultFormat = (config.format as string) || 'wav'
-
-        const provider: SpeechProvider = {
-          speech: () => ({
-            baseURL: `${baseUrl}/`,
-            model: defaultModel,
-            fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
-              if (!init?.body || typeof init.body !== 'string') {
-                throw new Error('Invalid request body')
-              }
-
-              const body = JSON.parse(init.body)
-              const text = body.input as string
-              const modelId = (body.model as string) || defaultModel
-              const format = (body.response_format as string) || defaultFormat
-              const stylePrompt = typeof body.style_prompt === 'string'
-                ? body.style_prompt.trim()
-                : typeof config.stylePrompt === 'string'
-                  ? config.stylePrompt.trim()
-                  : ''
-              const voiceSample = typeof body.voice_sample === 'string'
-                ? body.voice_sample.trim()
-                : typeof config.voiceSample === 'string'
-                  ? config.voiceSample.trim()
-                  : ''
-
-              const userPrompt = modelId === 'mimo-v2.5-tts-voiceclone'
-                ? stylePrompt
-                : stylePrompt || 'Use a natural, clear speaking style.'
-
-              const audio: Record<string, string> = { format }
-              if (modelId === 'mimo-v2.5-tts-voiceclone') {
-                if (!voiceSample) {
-                  throw new Error('MiMo voice clone requires a base64 audio sample in data URI format.')
-                }
-                audio.voice = voiceSample
-              }
-              else if (modelId === 'mimo-v2.5-tts') {
-                audio.voice = (body.voice as string) || defaultVoice
-              }
-
-              if (modelId === 'mimo-v2.5-tts-voicedesign' && !stylePrompt) {
-                throw new Error('MiMo voice design requires a style prompt in the user message.')
-              }
-
-              const response = await fetch(`${baseUrl}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'api-key': apiKey,
-                },
-                body: JSON.stringify({
-                  model: modelId,
-                  messages: [
-                    { role: 'user', content: userPrompt },
-                    { role: 'assistant', content: text },
-                  ],
-                  audio,
-                }),
-              })
-
-              if (!response.ok || !response.body) {
-                throw new Error(`MiMo TTS request failed: ${response.status} ${response.statusText}`)
-              }
-
-              const data = await response.json()
-              const audioBase64 = data?.choices?.[0]?.message?.audio?.data
-              if (!audioBase64) {
-                throw new Error('MiMo TTS response missing audio data')
-              }
-
-              const binaryString = atob(audioBase64)
-              const bytes = new Uint8Array(binaryString.length)
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i)
-              }
-
-              const contentType = format === 'wav' ? 'audio/wav' : format === 'mp3' ? 'audio/mpeg' : `audio/${format}`
-              return new Response(bytes.buffer, {
-                status: 200,
-                headers: { 'Content-Type': contentType },
-              })
-            },
-          }),
-        }
-        return provider
-      },
-      capabilities: {
-        listModels: async () => [
-          {
-            id: 'mimo-v2.5-tts',
-            name: 'MiMo v2.5 TTS',
-            provider: 'mimo-audio-speech',
-            description: 'Preset voice synthesis with the built-in MiMo voice list',
-            contextLength: 0,
-            deprecated: false,
-          },
-          {
-            id: 'mimo-v2.5-tts-voicedesign',
-            name: 'MiMo v2.5 TTS Voice Design',
-            provider: 'mimo-audio-speech',
-            description: 'Design a new voice from a natural language description',
-            contextLength: 0,
-            deprecated: false,
-          },
-          {
-            id: 'mimo-v2.5-tts-voiceclone',
-            name: 'MiMo v2.5 TTS Voice Clone',
-            provider: 'mimo-audio-speech',
-            description: 'Clone a voice from a base64-encoded audio sample',
-            contextLength: 0,
-            deprecated: false,
-          },
-        ],
-        listVoices: async () => [
-          { id: 'mimo_default', name: 'MiMo-默认', provider: 'mimo-audio-speech', gender: 'female', languages: [{ code: 'en', title: 'English' }, { code: 'zh', title: 'Chinese' }] },
-          { id: '冰糖', name: '冰糖', provider: 'mimo-audio-speech', gender: 'female', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: '茉莉', name: '茉莉', provider: 'mimo-audio-speech', gender: 'female', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: '苏打', name: '苏打', provider: 'mimo-audio-speech', gender: 'male', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: '白桦', name: '白桦', provider: 'mimo-audio-speech', gender: 'male', languages: [{ code: 'zh', title: 'Chinese' }] },
-          { id: 'Mia', name: 'Mia', provider: 'mimo-audio-speech', gender: 'female', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'Chloe', name: 'Chloe', provider: 'mimo-audio-speech', gender: 'female', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'Milo', name: 'Milo', provider: 'mimo-audio-speech', gender: 'male', languages: [{ code: 'en', title: 'English' }] },
-          { id: 'Dean', name: 'Dean', provider: 'mimo-audio-speech', gender: 'male', languages: [{ code: 'en', title: 'English' }] },
-        ],
-      },
-      validators: {
-        chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors = [
-            !config.apiKey && new Error('API key is required.'),
-            !config.baseUrl && new Error('Base URL is required.'),
-          ].filter(Boolean)
-
-          const res = baseUrlValidator.value(config.baseUrl)
-          if (res) {
-            return res
-          }
-
-          return {
-            errors,
-            reason: errors.map(e => (e as Error).message).join(', ') || '',
-            valid: !!config.apiKey && !!config.baseUrl,
+            valid: errors.length === 0,
           }
         },
       },
@@ -1831,156 +1093,115 @@ export const useProvidersStore = defineStore('providers', () => {
       ),
       validation: [ProviderValidationCheck.ModelList],
     }),
-    'mimo-audio-transcription': {
-      id: 'mimo-audio-transcription',
+    // NOTICE: FunASR 自托管服务需启用 OpenAI 兼容端点（funasr-server 的 openai_api 模式），
+    // 暴露 /v1/audio/transcriptions (multipart) 与 /v1/models，这样 generateTranscription
+    // (@xsai/generate-transcription) 的 model/file/response_format/language/prompt 字段可直接复用。
+    // 自托管部署通常不设鉴权，故自定义 validators 跳过 apiKey 校验，仅探活 models 端点。
+    // 移除条件：若 FunASR 上游默认强制鉴权，可改回 buildOpenAICompatibleProvider 默认校验。
+    'funasr': buildOpenAICompatibleProvider({
+      id: 'funasr',
+      name: 'FunASR',
+      nameKey: 'settings.pages.providers.provider.funasr.title',
+      descriptionKey: 'settings.pages.providers.provider.funasr.description',
+      icon: 'i-lobe-icons:alibabacloud',
+      description: 'Self-hosted FunASR (OpenAI-compatible)',
       category: 'transcription',
       tasks: ['speech-to-text', 'automatic-speech-recognition', 'asr', 'stt'],
-      nameKey: 'settings.pages.providers.provider.mimo.title',
-      name: 'Xiaomi MiMo',
-      descriptionKey: 'settings.pages.providers.provider.mimo.description',
-      description: 'api.xiaomimimo.com',
-      icon: 'i-simple-icons:xiaomi',
-      defaultOptions: () => ({
-        baseUrl: 'https://api.xiaomimimo.com/v1/',
-        model: 'mimo-v2-omni',
-      }),
-      createProvider: async (config) => {
-        const apiKey = (config.apiKey as string)?.trim() ?? ''
-        const rawBaseUrl = `${((config.baseUrl as string) || 'https://api.xiaomimimo.com/v1/').replace(/\/+$/, '')}/`
-        const defaultModel = (config.model as string) || 'mimo-v2-omni'
-
-        const provider: TranscriptionProvider = {
-          transcription: model => ({
-            baseURL: rawBaseUrl,
-            model: model || defaultModel,
-            headers: {},
-            fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
-              const formData = init?.body as FormData
-              const file = formData?.get('file') as Blob | null
-              const modelName = (formData?.get('model') as string) || defaultModel
-
-              if (!file) {
-                throw new Error('No audio file provided for transcription.')
-              }
-
-              // Read the file as base64 data URI (works with both Blob and File)
-              const base64DataUri: string = await new Promise((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onload = () => resolve(reader.result as string)
-                reader.onerror = () => reject(new Error('Failed to read audio file'))
-                reader.readAsDataURL(file)
-              })
-
-              // Extract format and base64 data from data URI
-              // data:audio/wav;base64,UklGR...
-              const mimeType = base64DataUri.split(';')[0]?.split(':')[1] || 'audio/wav'
-              const formatFromMime = mimeType.split('/')[1] || 'wav'
-              const base64Data = base64DataUri.split(',')[1]
-
-              // Map MIME sub-type to MiMo supported audio format
-              const audioFormat = formatFromMime === 'webm'
-                ? 'webm'
-                : formatFromMime === 'mp4'
-                  ? 'mp4'
-                  : formatFromMime === 'mpeg' || formatFromMime === 'mp3'
-                    ? 'mp3'
-                    : 'wav'
-
-              // MiMo audio understanding uses chat completions with input_audio,
-              // not a dedicated transcription endpoint
-              const response = await fetch(`${rawBaseUrl}chat/completions`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'api-key': apiKey,
-                },
-                body: JSON.stringify({
-                  model: modelName,
-                  messages: [
-                    {
-                      role: 'user',
-                      content: [
-                        { type: 'text', text: 'Transcribe the audio content.' },
-                        {
-                          type: 'input_audio',
-                          input_audio: {
-                            data: base64Data,
-                            format: audioFormat,
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                }),
-              })
-
-              if (!response.ok) {
-                const errorBody = await response.text().catch(() => '')
-                throw new Error(
-                  `MiMo transcription failed: ${response.status} ${response.statusText}${errorBody ? ` — ${errorBody}` : ''}`,
-                )
-              }
-
-              const data = await response.json()
-              const text = data?.choices?.[0]?.message?.content || ''
-
-              // Return in OpenAI transcription response format { text: "..." }
-              return new Response(JSON.stringify({ text }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' },
-              })
-            },
-          }),
-        }
-
-        return provider
-      },
+      defaultBaseUrl: 'http://localhost:8000/v1/',
+      creator: (apiKey, baseURL = 'http://localhost:8000/v1/') => merge(
+        createModelProvider({ apiKey, baseURL }),
+        createTranscriptionProvider({ apiKey, baseURL }),
+      ),
       capabilities: {
-        listModels: async () => [
-          {
-            id: 'mimo-v2-omni',
-            name: 'MiMo V2 Omni',
-            provider: 'mimo-audio-transcription',
-            description: 'Omni-modal model with native audio understanding and speech-to-text',
-            contextLength: 256000,
-            deprecated: false,
-          },
-          {
-            id: 'mimo-v2.5',
-            name: 'MiMo V2.5',
-            provider: 'mimo-audio-transcription',
-            description: 'Latest omni-modal model with audio understanding, 1M context',
-            contextLength: 1_000_000,
-            deprecated: false,
-          },
-        ],
-      },
-      transcriptionFeatures: {
-        supportsGenerate: true,
-        supportsStreamOutput: false,
-        supportsStreamInput: false,
+        listModels: async () => {
+          // NOTICE: 模型 id 必须与 FunASR server.py 的 --model 接受值一致
+          // （sensevoice / paraformer / paraformer-en / fun-asr-nano）。
+          // 注意是 'paraformer' 而非 'paraformer-zh'，后者会被服务端拒绝。
+          // 参考: examples/openai_api/server.py 的 AVAILABLE_MODELS。
+          // 移除条件: 若 FunASR 上游新增模型 id，在此同步增补。
+          return [
+            {
+              id: 'sensevoice',
+              name: 'SenseVoice-Small',
+              provider: 'funasr',
+              description: 'Multilingual ASR with emotion detection, CPU-friendly (recommended)',
+              contextLength: 0,
+              deprecated: false,
+            },
+            {
+              id: 'paraformer',
+              name: 'Paraformer-Large (Chinese)',
+              provider: 'funasr',
+              description: 'Non-autoregressive Chinese ASR, fast on GPU',
+              contextLength: 0,
+              deprecated: false,
+            },
+            {
+              id: 'paraformer-en',
+              name: 'Paraformer-Large (English)',
+              provider: 'funasr',
+              description: 'English Paraformer model',
+              contextLength: 0,
+              deprecated: false,
+            },
+            {
+              id: 'fun-asr-nano',
+              name: 'Fun-ASR-Nano',
+              provider: 'funasr',
+              description: 'Ultra-lightweight ASR for edge/low-resource devices',
+              contextLength: 0,
+              deprecated: false,
+            },
+          ]
+        },
       },
       validators: {
         chatPingCheckAvailable: false,
-        validateProviderConfig: (config) => {
-          const errors = [
-            !config.apiKey && new Error('API key is required.'),
-            !config.baseUrl && new Error('Base URL is required.'),
-          ].filter(Boolean)
+        validateProviderConfig: async (config) => {
+          const errors: Error[] = []
 
-          const res = baseUrlValidator.value(config.baseUrl)
-          if (res) {
-            return res
+          let baseUrl = typeof config.baseUrl === 'string' ? config.baseUrl.trim() : ''
+          if (!baseUrl) {
+            errors.push(new Error('Base URL is required. Default to http://localhost:8000/v1/ for FunASR.'))
           }
 
-          return {
-            errors,
-            reason: errors.map(e => (e as Error).message).join(', ') || '',
-            valid: !!config.apiKey && !!config.baseUrl,
+          try {
+            if (new URL(baseUrl).host.length === 0) {
+              errors.push(new Error('Base URL is not absolute. Check your input.'))
+            }
           }
+          catch {
+            errors.push(new Error('Base URL is invalid. It must be an absolute URL.'))
+          }
+
+          if (baseUrl && !baseUrl.endsWith('/'))
+            baseUrl += '/'
+
+          if (errors.length > 0) {
+            return { errors, reason: errors.map(e => e.message).join(', '), valid: false }
+          }
+
+          // 自托管 FunASR 通常不设鉴权；探活 models 端点确认服务可达。
+          try {
+            const controller = new AbortController()
+            const timeout = setTimeout(() => controller.abort(), 5000)
+            const response = await fetch(`${baseUrl}models`, { signal: controller.signal })
+            clearTimeout(timeout)
+
+            if (!response.ok) {
+              const reason = `FunASR unreachable: HTTP ${response.status} ${response.statusText}`
+              return { errors: [new Error(reason)], reason, valid: false }
+            }
+          }
+          catch (err) {
+            const reason = `FunASR connection failed: ${String(err)}`
+            return { errors: [err as Error], reason, valid: false }
+          }
+
+          return { errors, reason: '', valid: true }
         },
       },
-    },
+    }),
     'player2-speech': {
       id: 'player2-speech',
       category: 'speech',
@@ -2314,7 +1535,6 @@ export const useProvidersStore = defineStore('providers', () => {
         },
       },
     },
-    'google-gemini-audio-speech': buildGoogleGeminiSpeechProvider(v => baseUrlValidator.value(v)),
   }
 
   const VISION_PROVIDER_ID_PREFIX = 'vision-'

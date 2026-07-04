@@ -1,8 +1,7 @@
 import type { MessageRole, WireMessage } from '@proj-airi/server-sdk-shared'
 
 import type { Database } from '../../libs/db'
-import type { EngagementMetrics } from '../../otel'
-import type { ProductEventService } from './product-events'
+import type { EngagementMetrics, ProductEventSink } from '../../libs/metrics'
 
 import { useLogger } from '@guiiai/logg'
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm'
@@ -50,7 +49,7 @@ export function resolveSenderId(role: string, userId: string, characterId?: stri
 // Service factory
 // ---------------------------------------------------------------------------
 
-export function createChatService(db: Database, metrics?: EngagementMetrics | null, productEventService?: ProductEventService) {
+export function createChatService(db: Database, metrics?: EngagementMetrics | null, productEventService?: ProductEventSink | null) {
   // ---- internal helpers ---------------------------------------------------
 
   async function verifyMembership(tx: Parameters<Parameters<Database['transaction']>[0]>[0], chatId: string, userId: string) {

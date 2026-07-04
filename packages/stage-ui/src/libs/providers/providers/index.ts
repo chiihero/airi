@@ -1,37 +1,16 @@
-import './amazon-bedrock'
+// Retained providers for the personal slim build:
+// - openai / openai-compatible: standard OpenAI-protocol gateways (works with
+//   any compatible endpoint, including local proxies).
+// - deepseek: DeepSeek official API (OpenAI-compatible baseURL override).
+// - ollama / lm-studio: fully local, on-device model runtimes.
+// All cloud-vendor providers (anthropic/google/azure/openrouter/xai/...) were
+// removed to reduce dependencies; add one back by re-creating its directory and
+// importing it here.
 import './openai'
-import './aihubmix'
-import './lm-studio'
-import './azure-openai'
 import './openai-compatible'
-import './volcengine-coding-plan'
-import './byteplus'
-import './byteplus-coding-plan'
-import './n1n'
-import './openrouter-ai'
-import './nvidia'
-import './groq'
-import './anthropic'
-import './google-generative-ai'
 import './deepseek'
-import './302-ai'
-import './cerebras-ai'
-import './together-ai'
-import './xai'
-import './zai'
-import './novita-ai'
-import './fireworks-ai'
-import './featherless-ai'
-import './comet-api'
-import './perplexity-ai'
-import './minimax'
-import './mistral-ai'
-import './moonshot-ai'
-import './modelscope'
 import './ollama'
-import './mimo'
-import './cloudflare-workers-ai'
-import './azure-ai-foundry'
+import './lm-studio'
 import './official'
 
 export {

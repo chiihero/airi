@@ -91,8 +91,8 @@ export const useSharedAnalyticsStore = defineStore('analytics-shared', () => {
       // (keyed by Better Auth user id) won't merge with the browser's
       // anonymous funnel events.
       const authStore = useAuthStore()
-      if (authStore.isAuthenticated && authStore.user?.id)
-        identifyPosthogUser(authStore.user.id)
+      if (authStore.isAuthenticated && authStore.userId !== 'local')
+        identifyPosthogUser(authStore.userId)
     }
   })
 
@@ -120,12 +120,12 @@ export const useSharedAnalyticsStore = defineStore('analytics-shared', () => {
     // different person profiles and the funnel never joins. See
     // `apps/server/docs/ai-context/metrics-ownership.md`.
     const authStore = useAuthStore()
-    if (authStore.isAuthenticated && authStore.user?.id)
-      identifyPosthogUser(authStore.user.id)
+    if (authStore.isAuthenticated && authStore.userId !== 'local')
+      identifyPosthogUser(authStore.userId)
 
     authStore.onAuthenticated(() => {
-      if (authStore.user?.id)
-        identifyPosthogUser(authStore.user.id)
+      if (authStore.userId !== 'local')
+        identifyPosthogUser(authStore.userId)
     })
     authStore.onLogout(() => {
       resetPosthog()

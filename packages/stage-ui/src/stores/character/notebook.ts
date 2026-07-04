@@ -1,6 +1,15 @@
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { storage } from '../../database/storage'
+
+// NOTICE: notebook persistence keys. The character notebook (notes / diary /
+// focus entries + scheduled tasks) is persisted to IndexedDB so it survives
+// reloads. Previously this store was a dead in-memory ref that lost everything
+// on refresh; the watch-based persistence below captures every mutation.
+const ENTRIES_KEY = 'local:notebook/entries'
+const TASKS_KEY = 'local:notebook/tasks'
 
 export type NotebookEntryKind = 'note' | 'diary' | 'focus'
 
@@ -33,6 +42,30 @@ export interface ScheduledTask {
 export const useCharacterNotebookStore = defineStore('character-notebook', () => {
   const entries = ref<NotebookEntry[]>([])
   const tasks = ref<ScheduledTask[]>([])
+
+  // Hydrate from IndexedDB on first access. getItemRaw is async; we fire it
+  // without awaiting so the store is usable immediately (empty) and fills in
+  // once the read resolves. The watch below will not double-write during
+  // hydration because we set the refs directly before the watcher attaches.
+  void Promise.all([
+    storage.getItemRaw<NotebookEntry[]>(ENTRIES_KEY),
+    storage.getItemRaw<ScheduledTask[]>(TASKS_KEY),
+  ]).then(([savedEntries, savedTasks]) => {
+    if (savedEntries)
+      entries.value = savedEntries
+    if (savedTasks)
+      tasks.value = savedTasks
+  })
+
+  // Persist on any change. deep: true because entries/tasks are arrays of
+  // objects mutated in place (push, status flips). The write is debounced by
+  // Vue's reactivity batching within a microtask.
+  watch(entries, (value) => {
+    void storage.setItemRaw(ENTRIES_KEY, value)
+  }, { deep: true })
+  watch(tasks, (value) => {
+    void storage.setItemRaw(TASKS_KEY, value)
+  }, { deep: true })
 
   const partitionDiary = computed(() => entries.value.filter(entry => entry.kind === 'diary'))
   const partitionFocus = computed(() => entries.value.filter(entry => entry.kind === 'focus'))

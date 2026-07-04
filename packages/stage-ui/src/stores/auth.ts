@@ -1,61 +1,44 @@
-import type { Session, User } from 'better-auth'
-
-import { isStageTamagotchi } from '@proj-airi/stage-shared'
-import { StorageSerializers, useLocalStorage, useTimeoutFn, whenever } from '@vueuse/core'
+import { StorageSerializers, useLocalStorage, whenever } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
-import { client } from '../composables/api'
-import { useBreakpoints } from '../composables/use-breakpoints'
-import { triggerSignIn } from '../libs/auth'
-import { refreshAccessToken } from '../libs/auth-oidc'
-
 /**
- * Auth store — holds identity state and credits.
+ * Auth store — holds identity state for the single personal user.
  *
- * This store has no dependency on `stores/providers`, which allows
- * `providers` to safely depend on it without creating a circular import.
+ * Auth is the static bearer token: the renderer writes `auth/v1/token` with the
+ * same value the server configures as `TEST_AUTH_TOKEN`, and the shared
+ * `fetchSession()` call resolves the user/session envelope from the server's
+ * `/api/auth/get-session` endpoint. There is no OIDC refresh scheduling, no
+ * flux/credits balance, and no login-redirect gate — those were removed with
+ * the better-auth/stripe modules.
+ *
+ * This store has no dependency on `stores/providers`, so `providers` can safely
+ * depend on it without creating a circular import.
  */
 export const useAuthStore = defineStore('auth', () => {
-  const user = useLocalStorage<User | null>('auth/v1/user', null, {
+  // NOTICE: user/session are kept as opaque objects — the server synthesizes
+  // their shape in resolveTestAuthToken and the renderer only forwards them.
+  // Keeping `unknown` here would force awkward casts at every read site, so we
+  // accept a loose record and trust the server contract.
+  const user = useLocalStorage<Record<string, unknown> | null>('auth/v1/user', null, {
     // Why: https://github.com/vueuse/vueuse/pull/614#issuecomment-875450160
     serializer: StorageSerializers.object,
   })
-  const session = useLocalStorage<Session | null>('auth/v1/session', null, { serializer: StorageSerializers.object })
+  const session = useLocalStorage<Record<string, unknown> | null>('auth/v1/session', null, { serializer: StorageSerializers.object })
   const token = useLocalStorage<string | null>('auth/v1/token', null)
-  const refreshToken = useLocalStorage<string | null>('auth/v1/refresh-token', null)
-  // NOTICE:
-  // Persisted to drive `id_token_hint` on RP-Initiated Logout
-  // (`/api/auth/oauth2/end-session`). The `sid` claim inside the ID token is
-  // what lets the OIDC provider locate the server-side session row to delete
-  // — without this we'd be back to relying on cross-site session cookies.
-  const idToken = useLocalStorage<string | null>('auth/v1/oidc-id-token', null)
   const isAuthenticated = computed(() => !!user.value && !!session.value)
-  const userId = computed(() => user.value?.id ?? 'local')
+  const userId = computed(() => (user.value?.id as string | undefined) ?? 'local')
 
-  // --- OIDC token refresh state ---
-  // Persisted so refresh scheduling survives page reloads.
-  const oidcClientId = useLocalStorage<string | null>('auth/v1/oidc-client-id', null)
-  const tokenExpiry = useLocalStorage<number | null>('auth/v1/oidc-token-expiry', null)
-
-  const credits = useLocalStorage<number>('user/v1/flux', 0)
-
-  // Cross-app "user must log in" flag. Setting this to true triggers an
-  // immediate OIDC redirect on web (mobile + desktop). Electron skips this
-  // path because controls-island-auth-button listens for IPC and handles
-  // sign-in in the main process.
+  // Cross-app "user must log in" flag. With static-token auth the only way to
+  // satisfy this is to set the token, so consumers prompt for token entry
+  // rather than an OIDC redirect. Kept so existing call sites compile.
   const needsLogin = ref(false)
-  const { isMobile } = useBreakpoints()
 
-  whenever(needsLogin, async () => {
-    if (isStageTamagotchi())
-      return
-    await triggerSignIn()
+  whenever(needsLogin, () => {
+    // No automatic OIDC redirect in the slim build — the UI layer is expected
+    // to surface a token-entry prompt. This is a no-op fallback so the flag
+    // does not spin a loop.
   })
-
-  // Reset the flag if the viewport class flips, so a stale needsLogin from a
-  // previous breakpoint does not surface again on resize.
-  watch(isMobile, () => needsLogin.value = false)
 
   // --- Lifecycle hooks ---
   type AuthHook = () => void | Promise<void>
@@ -65,7 +48,6 @@ export const useAuthStore = defineStore('auth', () => {
   function onAuthenticated(hook: AuthHook) {
     authenticatedHooks.push(hook)
     // If already authenticated when hook is registered, fire immediately.
-    // This covers the case where auth resolves before the hook is registered.
     if (isAuthenticated.value) {
       hook()
     }
@@ -88,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Dispatch hooks when auth state changes
   watch(isAuthenticated, async (val, oldVal) => {
     if (val && !oldVal) {
+      needsLogin.value = false
       for (const hook of authenticatedHooks) {
         try {
           await hook()
@@ -109,172 +92,44 @@ export const useAuthStore = defineStore('auth', () => {
     }
   })
 
-  // --- OIDC token refresh scheduling ---
-  // Uses useTimeoutFn for automatic cleanup on store teardown.
-  // The delay ref is updated by scheduleTokenRefresh before calling start().
-
-  const refreshDelayMs = ref(0)
-  type TokenRefreshedHook = (accessToken: string) => void | Promise<void>
-  const tokenRefreshedHooks: TokenRefreshedHook[] = []
-
-  // Single-flight refresh: multiple concurrent callers (timer + 401 retry + restore)
-  // must not trigger multiple token exchanges. All share one in-flight promise.
-  let inflightRefresh: Promise<string | null> | null = null
-
-  async function refreshTokenNow(): Promise<string | null> {
-    if (inflightRefresh)
-      return inflightRefresh
-
-    if (!refreshToken.value || !oidcClientId.value)
-      return null
-
-    inflightRefresh = (async () => {
-      try {
-        const tokens = await refreshAccessToken(oidcClientId.value!, refreshToken.value!)
-        token.value = tokens.access_token
-        if (tokens.refresh_token)
-          refreshToken.value = tokens.refresh_token
-        if (tokens.expires_in) {
-          tokenExpiry.value = Date.now() + tokens.expires_in * 1000
-          scheduleTokenRefresh(tokens.expires_in)
-        }
-
-        for (const hook of tokenRefreshedHooks) {
-          try {
-            await hook(tokens.access_token)
-          }
-          catch (e) {
-            console.error('token refresh hook error', e)
-          }
-        }
-
-        return tokens.access_token
-      }
-      catch {
-        clearAllAuthState()
-        return null
-      }
-      finally {
-        inflightRefresh = null
-      }
-    })()
-
-    return inflightRefresh
-  }
-
-  const { start: startRefreshTimer, stop: stopRefreshTimer } = useTimeoutFn(
-    () => { refreshTokenNow() },
-    refreshDelayMs,
-    { immediate: false },
-  )
-
-  function scheduleTokenRefresh(expiresInSeconds: number): void {
-    stopRefreshTimer()
-    // Guard against missing/invalid lifetimes (e.g. token response omitted
-    // expires_in). useTimeoutFn with NaN/<=0 delay would fire immediately
-    // and spin a refresh loop — skip scheduling instead.
-    if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0)
-      return
-    // Refresh at 80% of lifetime
-    refreshDelayMs.value = expiresInSeconds * 0.8 * 1000
-    startRefreshTimer()
-  }
-
   /**
-   * Restore refresh scheduling from persisted state after page reload.
-   * Returns a promise that resolves after an immediate refresh completes
-   * (when the persisted token is already expired) so callers can avoid
-   * racing `fetchSession()` against a stale Bearer token.
-   */
-  async function restoreRefreshSchedule(): Promise<void> {
-    if (!refreshToken.value || !oidcClientId.value)
-      return
-
-    if (tokenExpiry.value) {
-      const remainingMs = tokenExpiry.value - Date.now()
-      if (remainingMs > 0) {
-        scheduleTokenRefresh(remainingMs / 1000)
-        return
-      }
-    }
-
-    // Already expired — refresh synchronously so subsequent requests use fresh token
-    await refreshTokenNow()
-  }
-
-  function onTokenRefreshed(hook: TokenRefreshedHook) {
-    tokenRefreshedHooks.push(hook)
-    return () => {
-      const idx = tokenRefreshedHooks.indexOf(hook)
-      if (idx >= 0)
-        tokenRefreshedHooks.splice(idx, 1)
-    }
-  }
-
-  /**
-   * Reset every auth-related field atomically.
-   *
-   * Use when: signing out, refresh fails, session is rejected by server, or
-   * persisted state is detected inconsistent.
-   *
-   * Why atomic: `refreshToken` and `oidcClientId` must either both exist or
-   * both be absent. A "half-cleared" state (one present, one null) makes
-   * `refreshTokenNow()` early-return without attempting refresh, so 401s
-   * loop silently until the user lands on a page that calls fetchSession.
+   * Reset every auth-related field atomically. Call on sign-out or when the
+   * server rejects the token.
    */
   function clearAllAuthState(): void {
-    stopRefreshTimer()
     user.value = null
     session.value = null
     token.value = null
-    refreshToken.value = null
-    oidcClientId.value = null
-    tokenExpiry.value = null
-    idToken.value = null
   }
 
-  const updateCredits = async () => {
-    if (!isAuthenticated.value)
-      return
-    const res = await client.api.v1.flux.$get()
-    if (res.ok) {
-      const data = await res.json()
-      credits.value = data.flux
-    }
+  /**
+   * Persist a static bearer token and mark the session as authenticated.
+   *
+   * In the personal build the renderer may run without the API server (the
+   * chat history is local-first via IndexedDB), so we synthesize a minimal
+   * user/session envelope from the token rather than blocking on
+   * `/api/auth/get-session`. When the server is reachable, `fetchSession()`
+   * (called on mount) enriches these with the server-side fields; when it is
+   * not, the synthesized identity is enough for `isAuthenticated` and the
+   * `userId` derivation to work offline.
+   */
+  function setStaticToken(value: string): void {
+    token.value = value
+    user.value = { id: 'local-user', name: 'You' }
+    session.value = { id: 'static', token: value, userId: 'local-user' }
+    needsLogin.value = false
   }
-
-  watch(isAuthenticated, async (val) => {
-    if (val) {
-      updateCredits()
-
-      needsLogin.value = false
-    }
-    else {
-      credits.value = 0
-    }
-  }, { immediate: true })
 
   return {
     user,
     userId,
     session,
     token,
-    refreshToken,
-    idToken,
     isAuthenticated,
-    credits,
-    updateCredits,
     needsLogin,
     onAuthenticated,
     onLogout,
-
-    // OIDC token refresh
-    oidcClientId,
-    tokenExpiry,
-    scheduleTokenRefresh,
-    restoreRefreshSchedule,
-    refreshTokenNow,
     clearAllAuthState,
-    onTokenRefreshed,
+    setStaticToken,
   }
 })

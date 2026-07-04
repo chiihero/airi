@@ -393,8 +393,35 @@ pages:
     upload: 上传
     upload_desc: 点击或拖拽文件到此处上传
   memory:
-    description: 存放记忆的地方，以及策略
     title: 记忆体
+    description: 配置角色如何记忆过往对话
+    intro:
+      title: 记忆体
+      description: >-
+        记忆体让角色能够回忆过往交流，从而在不同会话间保持一致性。
+        提供两种后端：本地关键词匹配（离线，默认）与 memU 向量记忆
+        （需要自托管的 memU 服务，提供语义召回）。
+    mode:
+      label: 当前后端
+      local: 本地关键词记忆
+      local-hint: 离线运行。按关键词匹配过往交流，无需下载嵌入模型。
+      memu: memU 向量记忆
+      memu-hint: 由自托管的 memU 服务提供语义召回，启用后不再使用本地记忆。
+    enable:
+      label: 启用 memU
+      description: 将记忆读写切换到 memU 服务。关闭时使用本地关键词记忆。
+    base-url:
+      label: memU 服务地址
+      description: memU FastAPI 服务的基地址，例如 http://localhost:8765
+    token:
+      label: 鉴权令牌
+      description: memU 的可选 bearer 令牌。若服务在本地运行且无鉴权需求则留空。
+      placeholder: 可选
+    test:
+      action: 测试连接
+      testing: 测试中…
+      success: 已连接
+      failure: 连接失败
   data:
     title: Data
     description: 管理存储 AIRI 数据、导出和重置
@@ -1245,6 +1272,12 @@ pages:
         title: Bilibili / IndexTTS
         callout_indextts2_unavailable_title: 暂不支持
         callout_indextts2_unavailable: 目前尚未支持 IndexTTS2，请使用 IndexTTS。
+      chattts:
+        description: 自托管 ChatTTS（OpenAI 兼容接口）
+        title: ChatTTS
+      funasr:
+        description: 自托管 FunASR（OpenAI 兼容接口）
+        title: FunASR
       azure-ai-foundry:
         description: Azure AI Foundry
         title: Azure AI Foundry

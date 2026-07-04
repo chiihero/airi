@@ -412,8 +412,36 @@ pages:
     upload: Upload
     upload_desc: Click or drag file to upload
   memory:
-    description: Where memories got stored, and organized
     title: Memory
+    description: Configure how the companion remembers past conversations
+    intro:
+      title: Memory
+      description: >-
+        Memory lets the companion recall past exchanges so it stays consistent
+        across sessions. Two backends are available: local keyword match
+        (offline, default) and memU vector memory (requires a self-hosted
+        memU service, semantic recall).
+    mode:
+      label: Active Backend
+      local: Local keyword memory
+      local-hint: Offline. Matches past exchanges by keyword; no embedding model download.
+      memu: memU vector memory
+      memu-hint: Semantic recall powered by a self-hosted memU service. Local memory is not used while enabled.
+    enable:
+      label: Enable memU
+      description: Switch memory I/O to the memU service. When off, local keyword memory is used.
+    base-url:
+      label: memU Service Address
+      description: Base URL of the memU FastAPI service, e.g. http://localhost:8765
+    token:
+      label: Auth Token
+      description: Optional bearer token for memU. Leave empty if the service runs locally without auth.
+      placeholder: Optional
+    test:
+      action: Test Connection
+      testing: Testing...
+      success: Connected
+      failure: Connection failed
   data:
     title: Data
     description: Manage stored AIRI data, exports, and resets
@@ -1299,6 +1327,12 @@ pages:
         title: Bilibili / IndexTTS
         callout_indextts2_unavailable_title: Limited Support
         callout_indextts2_unavailable: Support for IndexTTS2 is currently unavailable. Please use IndexTTS.
+      chattts:
+        description: Self-hosted ChatTTS (OpenAI-compatible API)
+        title: ChatTTS
+      funasr:
+        description: Self-hosted FunASR (OpenAI-compatible API)
+        title: FunASR
       azure-ai-foundry:
         description: Azure AI Foundry
         title: Azure AI Foundry

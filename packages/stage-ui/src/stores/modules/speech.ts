@@ -88,14 +88,12 @@ export const useSpeechStore = defineStore('speech', () => {
     )
   })
 
-  const supportsSSML = computed(() => {
-    // Currently only ElevenLabs and some other providers support SSML
-    // only part voices are support SSML in cosyvoice-v2 which is provided by alibaba
-    if (activeSpeechProvider.value === 'alibaba-cloud-model-studio' && activeSpeechModel.value === 'cosyvoice-v2') {
-      return true
-    }
-    return ['elevenlabs', 'microsoft-speech', 'azure-speech'].includes(activeSpeechProvider.value)
-  })
+  // NOTICE: SSML support previously gated on cloud providers (elevenlabs /
+  // microsoft-speech / azure-speech / alibaba-cloud-model-studio cosyvoice-v2),
+  // all of which were removed in the personal-slim refactor. No retained
+  // provider implements SSML, so this is now a constant false.
+  // 移除条件：若未来重新接入支持 SSML 的 provider，在此恢复 provider-id 判定。
+  const supportsSSML = computed(() => false)
 
   async function loadVoicesForProvider(provider: string, model?: string) {
     if (!provider) {
